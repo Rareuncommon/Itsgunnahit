@@ -143,7 +143,7 @@ table.t td.num, table.t th.num { text-align: right; }
 table.t tr.active td { color: var(--gold); }
 .scroll-x { overflow-x: auto; }
 
-.odds-row { display: grid; grid-template-columns: 110px 1fr 56px; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; }
+.odds-row { display: grid; grid-template-columns: 150px 1fr 72px; gap: 10px; line-height: 1.25; align-items: center; font-size: 13px; padding: 5px 0; }
 .odds-row .track { height: 8px; border-radius: 99px; background: var(--sea-0); overflow: hidden; }
 .odds-row .track div { height: 100%; background: var(--teal); }
 .odds-row.mine .track div { background: var(--gold); }

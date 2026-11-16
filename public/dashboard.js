@@ -88,15 +88,22 @@ function render() {
 function renderOdds(s) {
   const rows = s.oddsTable.map((o) => `
     <div class="odds-row${o.mine ? " mine" : ""}">
-      <span>1 in ${o.oneIn.toLocaleString()}${o.mine ? " ⭐" : ""}</span>
-      <div class="track"><div style="width:${(o.p * 100).toFixed(2)}%"></div></div>
-      <span class="pct">${pct(o.p)}</span>
+      <span>${esc(o.label)}<br><small style="color:var(--muted)">1 in ${o.oneIn.toLocaleString()}</small></span>
+      <div class="track"><div style="width:${Math.max(o.p * 100, o.p > 0 ? 0.5 : 0).toFixed(2)}%"></div></div>
+      <span class="pct">${pctFine(o.p)}</span>
     </div>`).join("");
-  $("odds").innerHTML = rows;
-  $("oddsNote").innerHTML = s.dropRate
-    ? `⭐ = your crew's guess (1 in ${s.dropRate.toLocaleString()}). With ${s.total.toLocaleString()} chests, ${pct(s.myOdds)} of crews would have found it by now${s.firstToken ? "." : `, so you're ${s.myOdds > 0.5 ? "officially unlucky 😭" : "right on track"}.`}`
-    : `Chance a crew would have found the token after ${s.total.toLocaleString()} chests, if the drop rate were "1 in X". The real rate isn't public. Set your own guess on the Control page.`;
+  const m = s.milestones;
+  const toHalf = Math.max(0, m[0].chests - s.total);
+  $("odds").innerHTML = rows + `
+    <div class="goal-bar" style="margin-top:12px">
+      <div class="track"><div class="fill" style="width:${Math.min(100, (s.total / m[0].chests) * 100)}%"></div></div>
+      <div class="lbl"><span>${s.total.toLocaleString()} / ${m[0].chests.toLocaleString()} chests to a 50/50 shot</span><span>${toHalf ? toHalf.toLocaleString() + " to go" : "Past the 50% mark!"}</span></div>
+    </div>
+    <div class="note">Chests needed at ${s.customRate ? "your custom" : "the official"} rate: 50% → ${m[0].chests.toLocaleString()}, 90% → ${m[1].chests.toLocaleString()}, 99% → ${m[2].chests.toLocaleString()}.</div>`;
+  $("oddsNote").innerHTML = `Bars show the chance your crew has found at least one token with ${s.total.toLocaleString()} chests opened. Every chest is a fresh 1-in-137,500 roll, so being "due" doesn't make the next chest any better. Official rate posted by Epic on Nov 7, 2026. The Treasure Hour boosts are as reported by community sites.`;
 }
+
+const pctFine = (p) => (p === 0 ? "0%" : p < 0.0001 ? (p * 100).toFixed(4) + "%" : p < 0.01 ? (p * 100).toFixed(3) + "%" : (p * 100).toFixed(1) + "%");
 
 function tile(k, v, sub = "", cls = "") {
   return `<div class="tile ${cls}"><div class="k">${k}</div><div class="v">${v}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div>`;

@@ -68,12 +68,19 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
   // ----- token odds -----
   const firstToken = tokens[0] || null;
   const chestsBeforeToken = firstToken ? chests.filter((c) => c.id < firstToken.id).length : null;
-  const dropRate = summary.settings?.dropRate || null;
+  const OFFICIAL = 137500;
+  const customRate = summary.settings?.dropRate || null;
+  const dropRate = customRate || OFFICIAL;
   const odds = (oneIn) => 1 - Math.pow(1 - 1 / oneIn, total);
-  const oddsTable = [50, 100, 250, 500, 1000, 2500, 5000]
-    .concat(dropRate && ![50, 100, 250, 500, 1000, 2500, 5000].includes(dropRate) ? [dropRate] : [])
-    .sort((a, b) => a - b)
-    .map((n) => ({ oneIn: n, p: odds(n), mine: n === dropRate }));
+  const need = (oneIn, target) => Math.ceil(Math.log(1 - target) / Math.log(1 - 1 / oneIn));
+  const rates = [
+    { oneIn: OFFICIAL, label: "Normal (Epic official)" },
+    { oneIn: 91667, label: "Treasure Hour 1.5×" },
+    { oneIn: 68750, label: "Treasure Hour 2×" },
+  ];
+  if (customRate && !rates.some((r) => r.oneIn === customRate)) rates.push({ oneIn: customRate, label: "Your custom rate" });
+  const oddsTable = rates.map((r) => ({ ...r, p: odds(r.oneIn), mine: r.oneIn === dropRate }));
+  const milestones = [0.5, 0.9, 0.99].map((t) => ({ target: t, chests: need(dropRate, t) }));
 
   return {
     total,
@@ -83,6 +90,8 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
     firstToken,
     chestsBeforeToken,
     dropRate,
+    customRate,
+    milestones,
     myOdds: dropRate ? odds(dropRate) : null,
     expectedRemaining: dropRate && !firstToken ? dropRate : null,
     oddsTable,
