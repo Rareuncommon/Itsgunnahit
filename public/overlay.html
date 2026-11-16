@@ -18,6 +18,8 @@
   <style>
     html, body { margin: 0; background: transparent; overflow: hidden; }
     body.bg { background: #06121f; }
+    body.compact { display: flex; align-items: center; justify-content: center; height: 100vh; }
+    body.compact .box { padding: 4px 10px; gap: 12px; }
     .box { display: inline-flex; align-items: center; gap: 18px; padding: 16px 24px; font-family: "Luckiest Guy", Impact, sans-serif; }
     .icon { font-size: calc(var(--size) * .7); filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
     .num { font-size: var(--size); line-height: .9; color: #ffc53d; text-shadow: 0 5px 0 #7a4b00, 0 0 20px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; }
@@ -42,6 +44,7 @@
   const show = q.get("show") || "session";
   document.documentElement.style.setProperty("--size", (Number(q.get("size")) || 110) + "px");
   if (q.get("bg")) document.body.classList.add("bg");
+  if (q.get("compact")) document.body.classList.add("compact");
   const lbl = q.has("label") ? q.get("label") : (show === "total" ? "CHESTS ALL-TIME" : "CHESTS THIS SESSION");
   document.getElementById("lbl").textContent = lbl;
   if (!lbl) document.getElementById("lbl").style.display = "none";

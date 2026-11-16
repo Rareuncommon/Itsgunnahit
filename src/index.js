@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import ASSETS from "./assets.gen.js";
 
 // Event types the tracker understands.
 //   chest – a normal chest opened
@@ -201,10 +202,17 @@ function reply(p, summary) {
   return json({ ok: true, ...summary });
 }
 
+function serveAsset(path) {
+  if (path.endsWith("/")) path += "index.html";
+  const file = ASSETS[path] || ASSETS[path + ".html"];
+  if (!file) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
+  return new Response(file.body, { headers: { "content-type": file.type, "cache-control": "public, max-age=60" } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith("/api/")) return serveAsset(url.pathname);
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
 
     const tracker = env.TRACKER.get(env.TRACKER.idFromName("main"));

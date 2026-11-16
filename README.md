@@ -4,7 +4,10 @@ Press a Stream Deck button and the chest count goes up by one, live, on a websit
 
 - **`/`** shows the stats dashboard: chests per session and all-time, chests per hour and per match, droughts, a crew leaderboard, charts by day, hour and weekday, token odds, sessions and recent activity.
 - **`/control.html`** has big buttons for your phone, settings, and ready-to-copy Companion URLs.
+- **`/popout.html`** is the in-game overlay: a small always-on-top counter window that floats over Fortnite on your PC. It needs Chrome or Edge, and Fortnite set to Windowed Fullscreen.
 - **`/overlay.html`** is an OBS browser source that animates on each new chest.
+
+**Live at https://chests.studioprompt.net** (backup address: https://chest-tracker.mtcantrell16.workers.dev)
 
 Every press is stored in a Cloudflare Durable Object, so presses never get lost, even when several friends press at the same moment.
 
@@ -21,8 +24,11 @@ npx wrangler secret put ADMIN_KEY   # choose a password that your buttons will u
 
 Open the URL. You're live.
 
-### Use your own domain (for example `chests.studioprompt.com`)
-The domain must be added to your Cloudflare account first. Then, in `wrangler.jsonc`, uncomment the `routes` line, change the hostname, and run `npx wrangler deploy` again. Cloudflare creates the DNS record and certificate for you.
+### Custom domain
+`wrangler.jsonc` routes the site to `chests.studioprompt.net`. Change the hostname there to any domain on your Cloudflare account and deploy again. Cloudflare creates the DNS record and certificate for you.
+
+### How the site files are served
+On every deploy, `scripts/build-assets.mjs` bundles `public/` into the Worker, so the whole site is one script. Just edit files in `public/` and deploy again.
 
 ## Stream Deck setup (Bitfocus Companion)
 

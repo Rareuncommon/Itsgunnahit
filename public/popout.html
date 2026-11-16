@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>In-Game Overlay</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧰</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+  <style>.wrap { max-width: 760px; } .card { margin-bottom: 16px; } ol { padding-left: 20px; margin: 0; } ol li { margin-bottom: 8px; }
+    #preview { border: 1px solid var(--line); border-radius: 12px; width: 100%; height: 150px; background: #06121f; }</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="chest" aria-hidden="true">🎮</div>
+      <div><h1>In-Game Overlay</h1><div class="sub">A live chest counter that floats on top of Fortnite</div></div>
+    </div>
+    <nav class="links"><a href="/">← Dashboard</a><a href="/control.html">🎛️ Control</a></nav>
+  </header>
+
+  <div class="card">
+    <h2>Counter settings</h2>
+    <div class="row">
+      <label class="f">Show
+        <select id="show">
+          <option value="session">Chests this session</option>
+          <option value="total">Chests all-time</option>
+        </select>
+      </label>
+      <label class="f">Size
+        <select id="size">
+          <option value="44">Small</option>
+          <option value="60" selected>Medium</option>
+          <option value="84">Large</option>
+        </select>
+      </label>
+    </div>
+    <iframe id="preview" title="Overlay preview"></iframe>
+    <div class="row" style="margin-top:14px">
+      <button class="btn huge" id="pop">📌 POP OUT OVER GAME</button>
+    </div>
+    <p class="note" id="support"></p>
+  </div>
+
+  <div class="card">
+    <h2>How to use it while playing</h2>
+    <ol>
+      <li>Open this page in <b>Chrome or Edge</b> on your gaming PC and click <b>Pop out over game</b>.</li>
+      <li>Drag the little window to a corner (top-left works well, away from the minimap) and resize it.</li>
+      <li>In Fortnite, go to <b>Settings → Display → Window Mode</b> and pick <b>Windowed Fullscreen</b>. In regular <i>Fullscreen</i> mode the game hides every other window.</li>
+      <li>Press your Stream Deck button. The counter updates within a second and pops on every new chest.</li>
+    </ol>
+    <p class="note">Streaming? Use the <a href="/overlay.html" target="_blank">OBS overlay</a> as a Browser Source instead, so viewers see it too. On console there's no way to draw over the game, so keep this page open on a phone or second screen.</p>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+if (store.get("pop-show")) $("show").value = store.get("pop-show");
+if (store.get("pop-size")) $("size").value = store.get("pop-size");
+
+const src = () => `/overlay.html?bg=1&compact=1&show=${$("show").value}&size=${$("size").value}`;
+const dims = () => { const s = Number($("size").value); return { width: Math.round(s * 4.6), height: Math.round(s * 2.1) }; };
+function refreshPreview() { $("preview").src = src(); store.set("pop-show", $("show").value); store.set("pop-size", $("size").value); }
+$("show").onchange = $("size").onchange = refreshPreview;
+refreshPreview();
+
+const hasPiP = "documentPictureInPicture" in window;
+$("support").textContent = hasPiP
+  ? "Your browser supports always-on-top windows. ✅"
+  : "This browser can't keep windows on top. It will open a normal popup instead. Use Chrome or Edge for a true always-on-top window.";
+
+$("pop").onclick = async () => {
+  const { width, height } = dims();
+  if (hasPiP) {
+    try {
+      const pip = await documentPictureInPicture.requestWindow({ width, height });
+      pip.document.title = "Chests";
+      pip.document.body.style.cssText = "margin:0;background:#06121f;overflow:hidden";
+      const f = pip.document.createElement("iframe");
+      f.src = new URL(src(), location.href).href;
+      f.style.cssText = "border:0;width:100vw;height:100vh;display:block";
+      pip.document.body.append(f);
+      return;
+    } catch (e) { console.warn(e); }
+  }
+  window.open(src(), "chestpop", `popup,width=${width},height=${height}`);
+};
+</script>
+</body>
+</html>
