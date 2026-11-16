@@ -5,7 +5,9 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
   const chests = ev.filter((e) => e.type === "chest" || e.type === "rare");
   const matches = ev.filter((e) => e.type === "match");
   const tokens = ev.filter((e) => e.type === "token");
-  const total = chests.length;
+  const tracked = chests.length;
+  const offset = summary.settings?.offset || 0;
+  const total = tracked + offset;
 
   // ----- sessions -----
   const sess = sessions.map((s) => {
@@ -84,6 +86,8 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
 
   return {
     total,
+    tracked,
+    offset,
     rare: chests.filter((c) => c.type === "rare").length,
     matches: matches.length,
     tokens: tokens.length,
@@ -98,8 +102,8 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
     sessions: sess,
     current,
     playTimeMs,
-    perHour: playTimeMs > 60_000 ? total / (playTimeMs / 3_600_000) : null,
-    perMatch: matches.length ? total / matches.length : null,
+    perHour: playTimeMs > 60_000 ? tracked / (playTimeMs / 3_600_000) : null,
+    perMatch: matches.length ? tracked / matches.length : null,
     avgGapMs: avg(allGaps),
     fastestGapMs: allGaps.length ? Math.min(...allGaps) : null,
     longestGapMs: allGaps.length ? Math.max(...allGaps) : null,
@@ -111,7 +115,7 @@ export function computeStats({ events, sessions, summary }, now = Date.now()) {
     bestDay,
     today,
     activeDays,
-    perActiveDay: activeDays ? total / activeDays : null,
+    perActiveDay: activeDays ? tracked / activeDays : null,
     byHour,
     byWeekday,
     last10,

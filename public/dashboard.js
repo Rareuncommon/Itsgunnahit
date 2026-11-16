@@ -74,10 +74,10 @@ function render() {
   $("dayChart").innerHTML = s.days.length
     ? barChart(s.days.map((d) => ({ label: d.date.toLocaleDateString(undefined, { month: "short", day: "numeric" }), v: d.count })), { labelEvery: Math.ceil(s.days.length / 8) })
     : empty();
-  $("hourChart").innerHTML = s.total
+  $("hourChart").innerHTML = s.tracked
     ? barChart(s.byHour.map((v, h) => ({ label: hourLabel(h), v })), { labelEvery: 3, alt: true })
     : empty();
-  $("weekChart").innerHTML = s.total
+  $("weekChart").innerHTML = s.tracked
     ? barChart(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => ({ label: d, v: s.byWeekday[i] })), { labelEvery: 1 })
     : empty();
   $("gapChart").innerHTML = gapChart(s.currentGaps);
@@ -112,7 +112,7 @@ function tile(k, v, sub = "", cls = "") {
 function renderTiles(s, now) {
   const c = s.current;
   $("tiles").innerHTML = [
-    tile("All-time chests", s.total.toLocaleString(), `${s.rare} rare · ${s.activeDays} day${s.activeDays === 1 ? "" : "s"} hunting`, "gold"),
+    tile("All-time chests", s.total.toLocaleString(), s.offset ? `incl. ${s.offset.toLocaleString()} from before tracking` : `${s.rare} rare · ${s.activeDays} day${s.activeDays === 1 ? "" : "s"} hunting`, "gold"),
     tile("This session", c ? c.chests.toLocaleString() : "—", c ? `${fmtNum(c.perHour)} / hour` : "no active session", "gold"),
     tile("Last chest", `<span data-ago="${s.lastChest?.ts || ""}">${ago(s.lastChest?.ts, now)}</span>`, s.lastChest ? `by ${esc(s.lastChest.player)}` : ""),
     tile("Chests / hour", fmtNum(s.perHour), `over ${fmtDur(s.playTimeMs, true)} played`, "teal"),
@@ -123,7 +123,7 @@ function renderTiles(s, now) {
     tile("Today", s.today.toLocaleString(), s.bestDay ? `best day: ${s.bestDay.count} (${s.bestDay.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })})` : ""),
     tile("Per hunting day", fmtNum(s.perActiveDay), `${s.sessions.length} session${s.sessions.length === 1 ? "" : "s"}`),
     tile("Best session", s.bestSession ? s.bestSession.chests.toLocaleString() : "—", s.bestSession ? esc(s.bestSession.name) : ""),
-    tile("Rare chest rate", s.total ? pct(s.rare / s.total) : "—", `${s.rare} of ${s.total}`, "purple"),
+    tile("Rare chest rate", s.tracked ? pct(s.rare / s.tracked) : "—", `${s.rare} of ${s.tracked} tracked`, "purple"),
   ].join("");
 }
 
@@ -137,7 +137,7 @@ function renderLeaderboard(s) {
         <div class="name">${esc(p.name)}</div>
         <div class="barwrap"><div style="width:${(p.chests / max) * 100}%"></div></div>
       </div>
-      <span class="count">${p.chests.toLocaleString()}<small>${pct(p.chests / s.total)}${p.rare ? ` · ${p.rare} rare` : ""}${s.current ? ` · ${p.sessionChests} today` : ""}</small></span>
+      <span class="count">${p.chests.toLocaleString()}<small>${pct(p.chests / s.tracked)}${p.rare ? ` · ${p.rare} rare` : ""}${s.current ? ` · ${p.sessionChests} today` : ""}</small></span>
     </li>`).join("");
 }
 

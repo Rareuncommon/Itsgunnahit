@@ -61,6 +61,7 @@
       <label class="f">Custom drop rate: 1 in … (blank = official 137,500)<input id="sRate" type="number" min="1" placeholder="137500"></label>
       <label class="f">Chest goal (progress bar)<input id="sGoal" type="number" min="1" placeholder="e.g. 1000"></label>
     </div>
+    <label class="f">Chests opened before using the tracker (added to all-time total and odds)<input id="sOffset" type="number" min="0" placeholder="0"></label>
     <button class="btn" id="saveSettings">Save settings</button>
   </div>
 
@@ -108,6 +109,7 @@ function show(s) {
   if (document.activeElement !== $("sTitle")) $("sTitle").value = st.title || "";
   if (document.activeElement !== $("sRate")) $("sRate").value = st.dropRate || "";
   if (document.activeElement !== $("sGoal")) $("sGoal").value = st.goal || "";
+  if (document.activeElement !== $("sOffset")) $("sOffset").value = st.offset || "";
 }
 
 const MSG = { chest: "+1 chest 🧰", rare: "+1 rare chest 💜", match: "+1 match", token: "🪙 TOKEN LOGGED! GG!", undo: "Undone ↶" };
@@ -124,7 +126,7 @@ $("newSession").onclick = async () => {
 };
 $("endSession").onclick = async () => { await call("session/end"); toast("Session ended"); };
 $("saveSettings").onclick = async () => {
-  await call("settings", { title: $("sTitle").value, dropRate: $("sRate").value, goal: $("sGoal").value });
+  await call("settings", { title: $("sTitle").value, dropRate: $("sRate").value, goal: $("sGoal").value, offset: $("sOffset").value });
   toast("Saved");
 };
 $("reset").onclick = async () => {

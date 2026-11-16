@@ -43,6 +43,7 @@ On every deploy, `scripts/build-assets.mjs` bundles `public/` into the Worker, s
 | +1 match | `https://YOUR-SITE/api/match?key=KEY` |
 | Undo last | `https://YOUR-SITE/api/undo?key=KEY` |
 | Found the token! | `https://YOUR-SITE/api/token?key=KEY&player=Max` |
+| Adjust starting count | `https://YOUR-SITE/api/offset?key=KEY&add=4000` (or `&set=4000`) |
 | New session | `https://YOUR-SITE/api/session/new?key=KEY&name=Friday` |
 
 - `player=` is optional. Give each friend their own button for the leaderboard.

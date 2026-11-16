@@ -114,6 +114,11 @@ export class Tracker extends DurableObject {
       const g = Number(patch.goal);
       if (g >= 1 && g <= 1e7) s.goal = Math.round(g);
     }
+    if (patch.offset === null || patch.offset === "") delete s.offset;
+    else if (patch.offset !== undefined) {
+      const o = Number(patch.offset);
+      if (o >= 0 && o <= 1e8) s.offset = Math.round(o);
+    }
     this.#set("settings", s);
     this.#bump();
     return this.summary();
@@ -128,11 +133,15 @@ export class Tracker extends DurableObject {
   summary() {
     const count = (where, ...a) => this.sql.exec(`SELECT COUNT(*) AS c FROM events WHERE ${where}`, ...a).one().c;
     const session = this.#currentSession(false);
+    const offset = this.#get("settings", {}).offset || 0;
+    const tracked = count("type IN ('chest','rare')");
     const last = this.sql.exec("SELECT ts, player, type FROM events WHERE type IN ('chest','rare') ORDER BY id DESC LIMIT 1").toArray()[0] || null;
     return {
       version: this.#get("version", 0),
       settings: this.#get("settings", {}),
-      total: count("type IN ('chest','rare')"),
+      total: tracked + offset,
+      tracked,
+      offset,
       rare: count("type = 'rare'"),
       matches: count("type = 'match'"),
       tokens: count("type = 'token'"),
@@ -265,6 +274,11 @@ export default {
           return json({ ok: true, ...(await tracker.newSession(p.name ? String(p.name).slice(0, 60) : "")) });
         case "session/end":
           return json({ ok: true, ...(await tracker.endSession()) });
+        case "offset": {
+          const cur = (await tracker.summary()).offset;
+          const next = p.set !== undefined ? Number(p.set) : cur + Number(p.add || 0);
+          return reply(p, await tracker.updateSettings({ offset: Math.max(0, next) }));
+        }
         case "settings":
           return json({ ok: true, ...(await tracker.updateSettings(p)) });
         case "reset":
