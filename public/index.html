@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chest Tracker</title>
+  <meta name="description" content="Live chest count and stats for the pirate token hunt.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="chest" aria-hidden="true">🏴‍☠️</div>
+      <div>
+        <h1 id="title">Pirate Token Hunt</h1>
+        <div class="sub"><span class="live-dot" id="live"></span><span id="liveText">Connecting…</span></div>
+      </div>
+    </div>
+    <nav class="links">
+      <a href="/control.html">🎛️ Control</a>
+      <a href="/overlay.html" target="_blank">📺 Stream overlay</a>
+      <a href="/api/export.csv">⬇️ Export CSV</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="card">
+      <h2>Chests opened <span class="hint" id="sessionName"></span></h2>
+      <div class="big-count">
+        <div class="num" id="bigNum">0</div>
+        <div class="meta">
+          <b id="sessTotal">0 all-time</b>
+          <span id="lastChest">No chests yet</span>
+        </div>
+      </div>
+      <div class="status-token" id="tokenStatus">🪙 Pirate token: not found yet. Keep looting!</div>
+      <div class="goal-bar" id="goalBar" hidden>
+        <div class="track"><div class="fill" id="goalFill"></div></div>
+        <div class="lbl"><span id="goalLeft"></span><span id="goalRight"></span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Token odds <span class="hint">by drop rate</span></h2>
+      <div id="odds"></div>
+      <div class="note" id="oddsNote"></div>
+    </div>
+  </section>
+
+  <div class="tiles" id="tiles"></div>
+
+  <h3 class="section-title">Progress</h3>
+  <div class="card" style="margin-bottom:16px">
+    <h2>Chests over time</h2>
+    <div id="cumChart"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Crew leaderboard</h2>
+      <ul class="lb" id="leaderboard"></ul>
+    </div>
+    <div class="card">
+      <h2>Chests per day <span class="hint">last 60 days</span></h2>
+      <div id="dayChart"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Time of day</h2>
+      <div id="hourChart"></div>
+    </div>
+    <div class="card">
+      <h2>Time between chests <span class="hint">this session</span></h2>
+      <div id="gapChart"></div>
+    </div>
+  </div>
+
+  <h3 class="section-title">Sessions</h3>
+  <div class="card scroll-x" style="margin-bottom:16px">
+    <table class="t" id="sessionsTable"></table>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Recent activity</h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+    <div class="card">
+      <h2>Day of week</h2>
+      <div id="weekChart"></div>
+    </div>
+  </div>
+
+  <footer>Fan-made tracker. Not affiliated with Epic Games. Updates live, no refresh needed.</footer>
+</div>
+<script type="module" src="/dashboard.js"></script>
+</body>
+</html>

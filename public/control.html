@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chest Control</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+  <style>.wrap { max-width: 760px; } .card { margin-bottom: 16px; }</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="chest" aria-hidden="true">🎛️</div>
+      <div><h1>Control</h1><div class="sub" id="who">Enter your key to unlock</div></div>
+    </div>
+    <nav class="links"><a href="/">← Dashboard</a></nav>
+  </header>
+
+  <div class="card">
+    <h2>Who's looting?</h2>
+    <div class="row">
+      <label class="f">Admin key<input id="key" type="password" autocomplete="current-password" placeholder="the ADMIN_KEY you set"></label>
+      <label class="f">Your name (optional)<input id="player" list="players" placeholder="e.g. Max"><datalist id="players"></datalist></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Session: <span id="sessName" style="color:var(--gold)">—</span> <span class="hint" id="sessCount"></span></h2>
+    <button class="btn huge" data-act="chest">+1 CHEST</button>
+    <div class="row" style="margin-top:12px">
+      <button class="btn purple" data-act="rare">+1 Rare chest</button>
+      <button class="btn teal" data-act="match">+1 Match</button>
+      <button class="btn secondary" data-act="undo">↶ Undo last</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn green" data-act="token">🪙 WE FOUND THE PIRATE TOKEN</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn secondary" id="newSession">▶ New session</button>
+      <button class="btn secondary" id="endSession">■ End session</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Stream Deck / Bitfocus Companion</h2>
+    <p class="note" style="margin-top:0">In Companion, add the <b>Generic: HTTP Requests</b> connection, then give a button the action <b>GET</b> with one of these URLs. Click a URL to copy it. Each friend can have their own button by changing <code>player=</code>.</p>
+    <div id="urls"></div>
+    <p class="note">To show the live count <i>on</i> the Stream Deck button, add <code>&amp;format=text</code> and save the response into a custom variable, or poll the read-only URL below.</p>
+  </div>
+
+  <div class="card">
+    <h2>Settings</h2>
+    <label class="f">Dashboard title<input id="sTitle" maxlength="80" placeholder="Pirate Token Hunt"></label>
+    <div class="row">
+      <label class="f">Your drop-rate guess: 1 in …<input id="sRate" type="number" min="1" placeholder="e.g. 1000 (leave blank if unknown)"></label>
+      <label class="f">Chest goal (progress bar)<input id="sGoal" type="number" min="1" placeholder="e.g. 1000"></label>
+    </div>
+    <button class="btn" id="saveSettings">Save settings</button>
+  </div>
+
+  <div class="card">
+    <h2>Danger zone</h2>
+    <button class="btn danger" id="reset">Wipe all data</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const store = {
+  get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+$("key").value = store.get("ct-key");
+$("player").value = store.get("ct-player");
+$("key").addEventListener("input", () => { store.set("ct-key", $("key").value); renderUrls(); });
+$("player").addEventListener("input", () => { store.set("ct-player", $("player").value); renderUrls(); });
+
+let toastTimer;
+function toast(msg, err = false) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.toggle("err", err); t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+async function call(route, body = {}) {
+  const r = await fetch(`/api/${route}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-key": $("key").value },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }));
+  if (!j.ok) { toast(j.error || "Something went wrong", true); throw new Error(j.error); }
+  show(j);
+  return j;
+}
+
+function show(s) {
+  $("sessName").textContent = s.session ? s.session.name : "none (starts on first chest)";
+  $("sessCount").textContent = s.session ? `${s.session.chests} chests · ${s.total} all-time` : `${s.total} all-time`;
+  const st = s.settings || {};
+  if (document.activeElement !== $("sTitle")) $("sTitle").value = st.title || "";
+  if (document.activeElement !== $("sRate")) $("sRate").value = st.dropRate || "";
+  if (document.activeElement !== $("sGoal")) $("sGoal").value = st.goal || "";
+}
+
+const MSG = { chest: "+1 chest 🧰", rare: "+1 rare chest 💜", match: "+1 match", token: "🪙 TOKEN LOGGED! GG!", undo: "Undone ↶" };
+document.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
+  const act = b.dataset.act;
+  if (act === "token" && !confirm("Log the pirate token as FOUND?")) return;
+  const j = await call(act, { player: $("player").value });
+  if (act === "undo" && !j.removed) toast("Nothing to undo", true); else toast(MSG[act]);
+}));
+$("newSession").onclick = async () => {
+  const name = prompt("Name for the new session (optional):", "");
+  if (name === null) return;
+  await call("session/new", { name }); toast("New session started");
+};
+$("endSession").onclick = async () => { await call("session/end"); toast("Session ended"); };
+$("saveSettings").onclick = async () => {
+  await call("settings", { title: $("sTitle").value, dropRate: $("sRate").value, goal: $("sGoal").value });
+  toast("Saved");
+};
+$("reset").onclick = async () => {
+  const c = prompt('This deletes every chest, session and setting. Type RESET to confirm.');
+  if (c !== "RESET") return;
+  await call("reset", { confirm: "RESET" }); toast("All data wiped");
+};
+
+function renderUrls() {
+  const base = location.origin + "/api";
+  const key = encodeURIComponent($("key").value || "YOUR_KEY");
+  const pl = $("player").value ? `&player=${encodeURIComponent($("player").value)}` : "";
+  const list = [
+    ["+1 chest", `${base}/chest?key=${key}${pl}`],
+    ["+1 rare chest", `${base}/rare?key=${key}${pl}`],
+    ["+1 match", `${base}/match?key=${key}${pl}`],
+    ["Undo last", `${base}/undo?key=${key}`],
+    ["Found the token!", `${base}/token?key=${key}${pl}`],
+    ["New session", `${base}/session/new?key=${key}`],
+    ["Read-only session count (plain text)", `${base}/summary.txt?show=session`],
+  ];
+  $("urls").innerHTML = list.map(([label, url]) =>
+    `<label class="f">${label}<code class="url" title="Click to copy">${url.replace(/&/g, "&amp;")}</code></label>`).join("");
+  document.querySelectorAll("code.url").forEach((c) => c.onclick = async () => {
+    try { await navigator.clipboard.writeText(c.textContent); toast("Copied"); } catch { toast("Copy failed. Select it manually", true); }
+  });
+}
+renderUrls();
+
+async function refresh() {
+  try {
+    const s = await (await fetch("/api/summary", { cache: "no-store" })).json();
+    show(s);
+    const d = await (await fetch("/api/data", { cache: "no-store" })).json();
+    const names = [...new Set(d.events.map((e) => e[3]).filter(Boolean))];
+    $("players").innerHTML = names.map((n) => `<option value="${n.replace(/"/g, "&quot;")}">`).join("");
+  } catch {}
+}
+async function checkKey() {
+  if (!$("key").value) return;
+  const r = await fetch("/api/check", { headers: { "x-key": $("key").value } });
+  $("who").textContent = r.ok ? "Unlocked ✅" : "Key not accepted ❌";
+}
+$("key").addEventListener("change", checkKey);
+checkKey();
+refresh();
+setInterval(async () => { try { show(await (await fetch("/api/summary", { cache: "no-store" })).json()); } catch {} }, 4000);
+</script>
+</body>
+</html>

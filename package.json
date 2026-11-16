@@ -1,0 +1,14 @@
+{
+  "name": "chest-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pirate token chest tracker – Stream Deck / Bitfocus Companion → Cloudflare Workers",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "set-key": "wrangler secret put ADMIN_KEY"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

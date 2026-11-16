@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chest-tracker",
+  "main": "src/index.js",
+  "compatibility_date": "2025-06-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "durable_objects": {
+    "bindings": [{ "name": "TRACKER", "class_name": "Tracker" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Tracker"] }]
+
+  // To use your own domain (it must already be on your Cloudflare account),
+  // uncomment this and change the hostname, then run `npm run deploy` again:
+  // ,"routes": [{ "pattern": "chests.studioprompt.com", "custom_domain": true }]
+}

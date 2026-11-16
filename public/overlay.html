@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chest Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <!--
+    OBS Browser Source. Options (add to the URL):
+      ?show=session   (default) chests this session
+      ?show=total     all-time chests
+      ?label=Chests   text under the number (use label= to hide it)
+      ?bg=1           dark background instead of transparent
+      ?size=120       number size in px
+  -->
+  <style>
+    html, body { margin: 0; background: transparent; overflow: hidden; }
+    body.bg { background: #06121f; }
+    .box { display: inline-flex; align-items: center; gap: 18px; padding: 16px 24px; font-family: "Luckiest Guy", Impact, sans-serif; }
+    .icon { font-size: calc(var(--size) * .7); filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+    .num { font-size: var(--size); line-height: .9; color: #ffc53d; text-shadow: 0 5px 0 #7a4b00, 0 0 20px rgba(0,0,0,.6); font-variant-numeric: tabular-nums; }
+    .lbl { color: #fff; font-size: calc(var(--size) * .28); letter-spacing: 1px; text-shadow: 0 3px 0 #000; }
+    .sub { color: #3ddbd9; font-size: calc(var(--size) * .2); text-shadow: 0 2px 0 #000; }
+    .bump { animation: bump .5s ease-out; }
+    @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.25) rotate(-3deg); } 100% { transform: scale(1); } }
+    .found .num { color: #4ade80; text-shadow: 0 5px 0 #0b5a2a; }
+  </style>
+</head>
+<body>
+  <div class="box" id="box">
+    <div class="icon">🧰</div>
+    <div>
+      <div class="num" id="num">0</div>
+      <div class="lbl" id="lbl">CHESTS</div>
+      <div class="sub" id="sub"></div>
+    </div>
+  </div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const show = q.get("show") || "session";
+  document.documentElement.style.setProperty("--size", (Number(q.get("size")) || 110) + "px");
+  if (q.get("bg")) document.body.classList.add("bg");
+  const lbl = q.has("label") ? q.get("label") : (show === "total" ? "CHESTS ALL-TIME" : "CHESTS THIS SESSION");
+  document.getElementById("lbl").textContent = lbl;
+  if (!lbl) document.getElementById("lbl").style.display = "none";
+  let last = null;
+  async function tick() {
+    try {
+      const s = await (await fetch("/api/summary", { cache: "no-store" })).json();
+      const v = show === "total" ? s.total : (s.session ? s.session.chests : 0);
+      const el = document.getElementById("num");
+      el.textContent = v.toLocaleString();
+      if (last !== null && v > last) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+      last = v;
+      document.getElementById("box").classList.toggle("found", s.tokens > 0);
+      document.getElementById("sub").textContent = s.tokens > 0 ? "🪙 PIRATE TOKEN FOUND!" : (show === "session" ? `${s.total.toLocaleString()} all-time` : "");
+    } catch {}
+  }
+  tick(); setInterval(tick, 1500);
+</script>
+</body>
+</html>
