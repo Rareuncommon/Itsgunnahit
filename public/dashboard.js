@@ -6,19 +6,22 @@ let stats = null;
 let version = -1;
 let lastShownCount = null;
 
-async function poll() {
+// The full event log is only downloaded when the server says something changed.
+let loading = false, wanted = -1;
+async function onSummary(s) {
+  wanted = s.version;
+  if (s.version === version || loading) return;
+  loading = true;
   try {
-    const r = await fetch("/api/summary", { cache: "no-store" });
-    const s = await r.json();
-    setLive(true);
-    if (s.version !== version) {
-      const full = await (await fetch("/api/data", { cache: "no-store" })).json();
-      data = full;
-      version = full.summary.version;
-      render();
-    }
+    const full = await (await fetch("/api/data", { cache: "no-store" })).json();
+    data = full;
+    version = full.summary.version;
+    render();
   } catch {
     setLive(false);
+  } finally {
+    loading = false;
+    if (wanted !== version) setTimeout(() => onSummary({ version: wanted }), 300);
   }
 }
 
@@ -251,5 +254,4 @@ setInterval(() => {
 }, 1000);
 setInterval(() => { if (data) render(); }, 30_000); // refresh durations / rates
 
-poll();
-setInterval(poll, 2500);
+window.ChestLive.connect(onSummary, setLive);

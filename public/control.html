@@ -51,7 +51,7 @@
     <h2>Stream Deck / Bitfocus Companion</h2>
     <p class="note" style="margin-top:0">In Companion, add the <b>Generic: HTTP Requests</b> connection, then give a button the action <b>GET</b> with one of these URLs. Click a URL to copy it. Each friend can have their own button by changing <code>player=</code>.</p>
     <div id="urls"></div>
-    <p class="note">To show the live count <i>on</i> the Stream Deck button, add <code>&amp;format=text</code> and save the response into a custom variable, or poll the read-only URL below.</p>
+    <p class="note">To show the live count <i>on</i> the Stream Deck button, add <code>&amp;format=text</code> and save the response into a custom variable. Avoid polling the read-only URL below more often than once a minute, because the free Cloudflare plan has a daily limit.</p>
   </div>
 
   <div class="card">
@@ -72,6 +72,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="/live.js"></script>
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -173,7 +174,7 @@ async function checkKey() {
 $("key").addEventListener("change", checkKey);
 checkKey();
 refresh();
-setInterval(async () => { try { show(await (await fetch("/api/summary", { cache: "no-store" })).json()); } catch {} }, 4000);
+window.ChestLive.connect(show);
 </script>
 </body>
 </html>

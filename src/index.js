@@ -31,6 +31,34 @@ export class Tracker extends DurableObject {
       );
       CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT);
     `);
+    // Cached results, rebuilt only after a change, so viewers never cause database reads.
+    this.cache = null;
+    this.dumpCache = null;
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
+
+  // Live connections: each open dashboard / overlay holds one WebSocket and gets pushed
+  // the new summary whenever something changes, instead of asking every few seconds.
+  async fetch(request) {
+    if (request.headers.get("upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
+    const { 0: client, 1: server } = new WebSocketPair();
+    this.ctx.acceptWebSocket(server);
+    server.send(JSON.stringify(this.summary()));
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  webSocketMessage() {}
+  webSocketClose(ws, code, reason) {
+    try { ws.close(code, reason); } catch {}
+  }
+  webSocketError() {}
+
+  #broadcast() {
+    const sockets = this.ctx.getWebSockets();
+    if (!sockets.length) return;
+    const msg = JSON.stringify(this.summary());
+    for (const ws of sockets) {
+      try { ws.send(msg); } catch {}
+    }
   }
 
   #get(k, fallback = null) {
@@ -42,6 +70,9 @@ export class Tracker extends DurableObject {
   }
   #bump() {
     this.#set("version", this.#get("version", 0) + 1);
+    this.cache = null;
+    this.dumpCache = null;
+    this.#broadcast();
   }
   #currentSession(create = true) {
     const row = this.sql.exec("SELECT * FROM sessions WHERE ended IS NULL ORDER BY id DESC LIMIT 1").toArray()[0];
@@ -131,41 +162,50 @@ export class Tracker extends DurableObject {
   }
 
   summary() {
-    const count = (where, ...a) => this.sql.exec(`SELECT COUNT(*) AS c FROM events WHERE ${where}`, ...a).one().c;
+    if (!this.cache) this.cache = this.#computeSummary();
+    return { ...this.cache, serverTime: Date.now() };
+  }
+
+  #computeSummary() {
     const session = this.#currentSession(false);
-    const offset = this.#get("settings", {}).offset || 0;
-    const tracked = count("type IN ('chest','rare')");
+    const settings = this.#get("settings", {});
+    const offset = settings.offset || 0;
+    const sid = session ? session.id : -1;
+    // One pass over the events table for every count.
+    const c = this.sql.exec(`
+      SELECT
+        COALESCE(SUM(type IN ('chest','rare')), 0)                 AS tracked,
+        COALESCE(SUM(type = 'rare'), 0)                            AS rare,
+        COALESCE(SUM(type = 'match'), 0)                           AS matches,
+        COALESCE(SUM(type = 'token'), 0)                           AS tokens,
+        COALESCE(SUM(type IN ('chest','rare') AND session = ?), 0) AS sChests,
+        COALESCE(SUM(type = 'match' AND session = ?), 0)           AS sMatches
+      FROM events`, sid, sid).one();
     const last = this.sql.exec("SELECT ts, player, type FROM events WHERE type IN ('chest','rare') ORDER BY id DESC LIMIT 1").toArray()[0] || null;
     return {
       version: this.#get("version", 0),
-      settings: this.#get("settings", {}),
-      total: tracked + offset,
-      tracked,
+      settings,
+      total: c.tracked + offset,
+      tracked: c.tracked,
       offset,
-      rare: count("type = 'rare'"),
-      matches: count("type = 'match'"),
-      tokens: count("type = 'token'"),
+      rare: c.rare,
+      matches: c.matches,
+      tokens: c.tokens,
       session: session
-        ? {
-            id: session.id,
-            name: session.name,
-            started: session.started,
-            chests: count("type IN ('chest','rare') AND session = ?", session.id),
-            matches: count("type = 'match' AND session = ?", session.id),
-          }
+        ? { id: session.id, name: session.name, started: session.started, chests: c.sChests, matches: c.sMatches }
         : null,
       lastChest: last,
-      serverTime: Date.now(),
     };
   }
 
   dump() {
-    return {
-      summary: this.summary(),
+    if (this.dumpCache) return { ...this.dumpCache, summary: this.summary() };
+    this.dumpCache = {
       events: this.sql.exec("SELECT id, ts, type, player, session FROM events ORDER BY id").toArray()
         .map((e) => [e.id, e.ts, e.type, e.player, e.session]),
       sessions: this.sql.exec("SELECT * FROM sessions ORDER BY id").toArray(),
     };
+    return { ...this.dumpCache, summary: this.summary() };
   }
 }
 
@@ -218,8 +258,15 @@ function serveAsset(path) {
   return new Response(file.body, { headers: { "content-type": file.type, "cache-control": "public, max-age=60" } });
 }
 
+async function handleSummary(route, p, tracker) {
+  const s = await tracker.summary();
+  if (route === "summary") return json(s);
+  const field = p.show || "session";
+  return text(field === "total" ? s.total : field === "rare" ? s.rare : field === "matches" ? s.matches : s.session?.chests ?? 0);
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return serveAsset(url.pathname);
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -229,12 +276,21 @@ export default {
     const p = await readParams(request, url);
 
     // ---- public, read-only ----
-    if (route === "summary") return json(await tracker.summary());
-    if (route === "summary.txt") {
-      const s = await tracker.summary();
-      const field = p.show || "session";
-      const v = field === "total" ? s.total : field === "rare" ? s.rare : field === "matches" ? s.matches : s.session?.chests ?? 0;
-      return text(v);
+    if (route === "live") return tracker.fetch(request);
+
+    // Polled read endpoints (old open tabs, Companion feedback) get a 2-second edge cache,
+    // so frequent polling can't run through the free plan's daily limits.
+    if ((route === "summary" || route === "summary.txt") && request.method === "GET") {
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString(), { method: "GET" });
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+      const res = await handleSummary(route, p, tracker);
+      const toCache = new Response(res.body, res);
+      toCache.headers.set("cache-control", "public, max-age=2");
+      ctx.waitUntil(cache.put(cacheKey, toCache.clone()));
+      toCache.headers.set("cache-control", "no-store");
+      return toCache;
     }
     if (route === "data") return json(await tracker.dump());
     if (route === "export.csv") {

@@ -39,6 +39,7 @@
       <div class="sub" id="sub"></div>
     </div>
   </div>
+<script src="/live.js"></script>
 <script>
   const q = new URLSearchParams(location.search);
   const show = q.get("show") || "session";
@@ -49,9 +50,8 @@
   document.getElementById("lbl").textContent = lbl;
   if (!lbl) document.getElementById("lbl").style.display = "none";
   let last = null;
-  async function tick() {
+  function update(s) {
     try {
-      const s = await (await fetch("/api/summary", { cache: "no-store" })).json();
       const v = show === "total" ? s.total : (s.session ? s.session.chests : 0);
       const el = document.getElementById("num");
       el.textContent = v.toLocaleString();
@@ -61,7 +61,7 @@
       document.getElementById("sub").textContent = s.tokens > 0 ? "🪙 PIRATE TOKEN FOUND!" : (show === "session" ? `${s.total.toLocaleString()} all-time` : "");
     } catch {}
   }
-  tick(); setInterval(tick, 1500);
+  ChestLive.connect(update);
 </script>
 </body>
 </html>
